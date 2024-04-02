@@ -36,7 +36,7 @@ class ViewController: UIViewController {
   @IBOutlet var warriorImageView: UIImageView!
 
   // MARK: - Properties
-  var toDos: [ToDoItem] = []
+  var toDos: [ToDo] = []
 
   // MARK: - View Life Cycle
   override func viewDidLoad() {
@@ -61,6 +61,9 @@ extension ViewController {
     controller.addAction(UIAlertAction(title: "Single Task", style: .default) { [unowned self] _ in
       self.createDefaultTask()
     })    
+		controller.addAction(UIAlertAction(title: "Multistep Task", style: .default) { [unowned self] _ in
+			self.createMultistepToDoItem()
+		})
     controller.addAction(UIAlertAction(title: "Cancel", style: .default))
     present(controller, animated: true)
   }
@@ -85,6 +88,33 @@ extension ViewController {
     controller.addAction(UIAlertAction(title: "Cancel", style: .default))
     present(controller, animated: true)
   }
+	
+	func createMultistepToDoItem() {
+		let controller = UIAlertController(title: "Create Multistep Task",
+																			 message: nil,
+																			 preferredStyle: .alert)
+		controller.addTextField() { $0.placeholder = "Task title" }
+		(1...4).forEach { _ in controller.addTextField() { $0.placeholder = "Subtask title" } }
+		let saveAction = UIAlertAction(title: "Save", style: .default) { [unowned self] _ in
+			guard let textFields = controller.textFields,
+						let name = textFields.first?.text,
+						!name.isEmpty else {
+				return
+			}
+			let subtaskTextFields = textFields[1...(textFields.count - 1)]
+			let subtasks = subtaskTextFields.filter { !$0.text!.isEmpty }.map { ToDoItem(name: $0.text!) }
+			
+			let toDo = MultistepToDoItem(name: name, subtasks: subtasks)
+			self.toDos.append(toDo)
+			
+			self.collectionView.reloadData()
+			self.updateWarriorPosition()
+		}
+		controller.addAction(saveAction)
+		controller.addAction(UIAlertAction(title: "Cancel", style: .default))
+		present(controller, animated: true)
+		
+	}
   
   func updateWarriorPosition() {
     let percentageComplete: CGFloat
@@ -116,6 +146,7 @@ extension ViewController: UICollectionViewDataSource {
     cell.label.text = currentToDo.name
     cell.checkBoxView.backgroundColor = currentToDo.isComplete ?
       UIColor(red: 0.24, green: 0.56, blue: 0.30, alpha: 1.0) : .white
+		cell.subtasks = currentToDo.subtasks
     cell.layoutSubviews()
     return cell
   }
@@ -145,6 +176,7 @@ extension ViewController: UICollectionViewDelegateFlowLayout {
     var size = CGSize()
     size.width = collectionView.frame.width
     size.height = collectionView.frame.height * 0.15
+		size.height += CGFloat(60 * toDos[indexPath.row].subtasks.count)
     return size
   }
 }
